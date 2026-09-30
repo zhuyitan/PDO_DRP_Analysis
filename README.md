@@ -36,9 +36,12 @@ The model implementations used in this study are based on the **IMPROVE** versio
 
 Instructions for setting up the model environments, dependencies, and running the underlying models can be found in the corresponding IMPROVE repositories:
 
-- GraphDRP: https://github.com/JDACS4C-IMPROVE/GraphDRP/tree/develop
-- HiDRA: https://github.com/JDACS4C-IMPROVE/HiDRA/tree/branch-v0.1.0
-- LGBM: https://github.com/JDACS4C-IMPROVE/LGBM/tree/develop
+- GraphDRP: https://github.com/JDACS4C-IMPROVE/GraphDRP
+- HiDRA: https://github.com/JDACS4C-IMPROVE/HiDRA
+- LGBM: https://github.com/JDACS4C-IMPROVE/LGBM
+- UNO: https://github.com/JDACS4C-IMPROVE/UNO
+- IGTD: https://github.com/JDACS4C-IMPROVE/IGTD
+- DeepTTC: https://github.com/JDACS4C-IMPROVE/DeepTTC
 - IMPROVE documentation: https://jdacs4c-improve.github.io/docs/
 
 See `models/README.md` for information about the model-specific modifications used in this study.
