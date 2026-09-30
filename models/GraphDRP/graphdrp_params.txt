@@ -1,0 +1,36 @@
+[Global_Params]
+model_name = GraphDRP
+
+[Preprocess]
+train_split_file = CCLE_split_0_train.txt
+val_split_file = CCLE_split_0_val.txt
+test_split_file = CCLE_split_0_test.txt
+data_format = .pt
+y_data_files = [["response.tsv"]]
+x_data_canc_files = [["cancer_gene_expression.tsv", ["Gene_Symbol"]]]
+x_data_drug_files = [["drug_SMILES.tsv"]]
+use_lincs = True
+scaling = std
+
+[Train]
+data_format = .pt
+model_file_name = model
+model_file_format = .pt
+epochs = 200
+batch_size = 256
+val_batch = 256
+learning_rate = 0.0001
+loss = mse
+early_stop_metric = mse
+patience = 20
+ckpt_save_interval = 5
+model_arch = GINConvNet
+log_interval = 30
+cuda_name = cuda:7
+
+[Infer]
+data_format = .pt
+model_file_name = model
+model_file_format = .pt
+infer_batch = 256
+cuda_name = cuda:7
