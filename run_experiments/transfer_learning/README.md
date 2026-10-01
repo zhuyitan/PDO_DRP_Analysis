@@ -6,6 +6,7 @@ The currently supported models are:
 
 - **GraphDRP**
 - **LightGBM (LGBM)**
+- **UNO**
 
 The transfer-learning experiments start from models pretrained on CCL data, fine-tune those models using PDO training data, perform hyperparameter optimization on the PDO validation split, and evaluate the resulting models on held-out study and auxiliary evaluation sets.
 
@@ -17,6 +18,7 @@ The transfer-learning experiments start from models pretrained on CCL data, fine
 transfer_learning/
 ├── run_graphdrp.py
 ├── run_lgbm.py
+├── run_uno.py
 └── README.md
 ```
 
@@ -61,7 +63,7 @@ i = 0 ... 9
 j = 0 ... 9
 ```
 
-so each study can contain:
+For random splits, each study can contain:
 
 ```text
 10 CCL folds × 10 PDO folds = 100 transfer-learning runs
@@ -73,14 +75,23 @@ Across four studies, this gives up to:
 4 × 10 × 10 = 400 runs per model
 ```
 
+Cancer-blind studies do not all have 10 PDO folds. The UNO runner detects the number for each study.
+
 
 ---
 
 # Data Splits
 
-The transfer-learning runners use:
+The GraphDRP and LGBM transfer-learning runners use:
 
 ```text
+pdo_drp_data/splits/random/
+```
+
+The UNO runner runs both:
+
+```text
+pdo_drp_data/splits/cancer-blind/
 pdo_drp_data/splits/random/
 ```
 
@@ -116,14 +127,17 @@ PDO_DRP_Analysis_GitHub/
 ├── models/
 │   ├── GraphDRP/
 │   ├── HiDRA/
-│   └── LGBM/
+│   ├── LGBM/
+│   └── UNO/
 │
 ├── run_experiments/
+│   ├── cell_line_only_training/
 │   ├── joint_training/
 │   └── transfer_learning/
 │       ├── README.md
 │       ├── run_graphdrp.py
-│       └── run_lgbm.py
+│       ├── run_lgbm.py
+│       └── run_uno.py
 │
 └── pdo_drp_data/
     ├── splits/
@@ -841,9 +855,243 @@ For `Pilot_1`, the mixed outputs are not required.
 
 ---
 
+# UNO Transfer Learning
+
+Run:
+
+```bash
+python run_experiments/transfer_learning/run_uno.py
+```
+
+Requirements:
+
+- `models/UNO/uno_finetune_improve.py`, with a `"canc_drug"` entry (`CANC_LAYERS | DRUG_LAYERS`) in `FREEZE_GROUPS`
+- `scipy`
+
+---
+
+# UNO Pretrained Models
+
+UNO starts from the models trained by:
+
+```text
+run_experiments/cell_line_only_training/run_uno.py
+```
+
+The pretrained model for CCL fold `i` is read from:
+
+```python
+PRETRAIN_DIR_TEMPLATE = "cell_line_only_results_uno/{split_type}/split_{i}/processed_ccl"
+```
+
+Each of these folders must contain:
+
+```text
+model.h5
+x_data_gene_expression_scaler.gz
+x_data_mordred_scaler.gz
+```
+
+For example:
+
+```text
+split_type = cancer-blind
+i = 4
+```
+
+uses:
+
+```text
+cell_line_only_results_uno/cancer-blind/split_4/processed_ccl/
+```
+
+Before any GPU work starts, the runner checks that all 10 CCL folds have both scalers, and stops with a list of missing files if not.
+
+To use pretrained models saved somewhere else, change `PRETRAIN_DIR_TEMPLATE`.
+
+---
+
+# UNO Preprocessing
+
+PDO data is preprocessed with:
+
+```text
+uno_preprocess_improve.py --pretrained_model_dir <CCL fold i folder>
+```
+
+so the gene-expression and Mordred scalers fitted on the source CCL fold are loaded and reused rather than refit on the PDO data.
+
+---
+
+# UNO Transfer Strategy
+
+The UNO transfer-learning experiment keeps both the cancer and drug encoders frozen:
+
+```python
+FIXED_FREEZE_GROUP = "canc_drug"
+```
+
+The hyperparameter search controls how many of the five post-concatenation layers are left trainable.
+
+---
+
+# UNO Hyperparameter Optimization
+
+UNO uses SciPy's `differential_evolution`, minimizing:
+
+```text
+val_mse
+```
+
+on the study validation split.
+
+The optimized parameters are:
+
+### Batch size
+
+```text
+4
+8
+16
+```
+
+### Learning rate
+
+Searched on a log10 scale:
+
+```text
+10^-5 to 10^-3
+```
+
+### Unfrozen post-concatenation layers
+
+```text
+0
+1
+2
+3
+```
+
+### Dropout
+
+```text
+0, 0.1, 0.2, 0.4, 0.6, 0.9
+```
+
+The differential-evolution settings are:
+
+```text
+maxiter       = 5
+popsize       = 5
+tolerance     = 0.01
+seed          = 42
+strategy      = best1bin
+mutation      = 0.5–1.0
+recombination = 0.7
+```
+
+This gives up to 120 candidates per job. Every HPO trial and the final training use:
+
+```text
+finetune_epochs         = 200
+early_stopping_patience = 20
+```
+
+The best configuration is written to `best_hyperparameters.json`, and every evaluation to `hpo_history.jsonl`. Temporary trial folders are deleted after their scores are recorded.
+
+---
+
+# UNO Workflow
+
+For each:
+
+```text
+(split_type, study, CCL fold i, PDO fold j)
+```
+
+the runner performs:
+
+```text
+Load CCL fold i pretrained model and scalers
+        ↓
+Preprocess PDO train/val/test
+using the CCL fold scalers
+        ↓
+Differential-evolution HPO
+        ↓
+Final fine-tuning with the best configuration
+        ↓
+Study test inference
+        ↓
+Training-set preprocessing + inference
+        ↓
+Mixed preprocessing + inference   (skipped for Pilot_1)
+        ↓
+Write performance summary and timing
+```
+
+The split types run in the order given by:
+
+```python
+SPLIT_TYPES = ["cancer-blind", "random"]
+```
+
+Set `PILOT_MODE = True` to run only `i = 0`, `j = 0` for each study as a quick end-to-end test.
+
+---
+
+# UNO GPU Scheduling
+
+No GPU settings need to be edited. The runner detects the available GPUs when it starts and runs one job per GPU at a time.
+
+- Set `CUDA_VISIBLE_DEVICES` to limit which GPUs are used
+- Set `JOBS_PER_GPU` to run more than one job per GPU. The batch sizes are small, so `JOBS_PER_GPU=3` usually fits.
+- If no GPU is found, jobs run on the CPU
+
+```bash
+JOBS_PER_GPU=3 python run_experiments/transfer_learning/run_uno.py
+```
+
+---
+
+# UNO Output
+
+Results are written under:
+
+```text
+transfer_learning_results_uno/
+```
+
+with one folder per split type:
+
+```text
+transfer_learning_results_uno/
+└── cancer-blind/
+    ├── results_summary.jsonl
+    └── IMPROVE dataset 1/
+        ├── ccl0_j0/
+        │   ├── model.h5
+        │   ├── best_hyperparameters.json
+        │   ├── hpo_history.jsonl
+        │   ├── performance_summary.json
+        │   ├── timing.json
+        │   ├── study/
+        │   ├── train/
+        │   └── mixed/
+        │
+        ├── ccl0_j1/
+        └── ...
+```
+
+`performance_summary.json` collects the train, validation, test and mixed scores for one run. `results_summary.jsonl` collects one row per run and split for the whole split type.
+
+For `Pilot_1`, the `mixed/` result is not required.
+
+---
+
 # Resume Behavior
 
-Both runners are designed so that large experiments can be restarted.
+All three runners are designed so that large experiments can be restarted.
 
 ## GraphDRP
 
@@ -879,11 +1127,45 @@ best_hyperparameters.json
 
 files are also reused so HPO does not have to be repeated unnecessarily.
 
+## UNO
+
+A UNO run is considered complete when its model, HPO configuration, timing, performance summary, and study, training-set and mixed scores exist. Completed runs are skipped.
+
+A saved `best_hyperparameters.json` is reused only if it matches the current search space and training length.
+
+---
+
+# Running in tmux
+
+`run_experiments/launch_tmux.sh` starts a runner in its own detached tmux session, so it keeps running after you disconnect. It activates the given conda environment inside the session and saves all output to `logs/`.
+
+```bash
+run_experiments/launch_tmux.sh <conda_env> <runner.py> [work_dir]
+```
+
+Example:
+
+```bash
+run_experiments/launch_tmux.sh <uno_env> run_experiments/transfer_learning/run_uno.py
+```
+
+- The session is named after the folder and model, for example `transfer_learning-uno`
+- `work_dir` is the folder holding `pdo_drp_data/` and `models/` (default: the repository root)
+- `CUDA_VISIBLE_DEVICES` and `JOBS_PER_GPU` are passed through when set
+
+Useful tmux commands:
+
+```bash
+tmux ls                          # list sessions
+tmux attach -t <session>         # watch a session; detach with Ctrl-b then d
+tmux kill-session -t <session>   # stop a session
+```
+
 ---
 
 # Timing
 
-Both transfer-learning experiments record runtime information.
+All three transfer-learning experiments record runtime information.
 
 Each completed experiment contains:
 
@@ -894,4 +1176,3 @@ timing.json
 The timing metadata identifies the relevant study and fold combination and records experiment runtime.
 
 This can be used to compare the computational requirements of different models or transfer-learning configurations.
-
