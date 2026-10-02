@@ -32,7 +32,7 @@ The analysis and experiment scripts expect this directory structure when run fro
 
 ## Models
 
-The model implementations used in this study are based on the **IMPROVE** versions of GraphDRP, HiDRA, and LGBM, with modifications made for the experiments in this repository.
+The model implementations used in this study are based on the **IMPROVE** versions of GraphDRP, HiDRA, LGBM, UNO, DeepTTC, and IGTD with modifications made for the experiments in this repository.
 
 Instructions for setting up the model environments, dependencies, and running the underlying models can be found in the corresponding IMPROVE repositories:
 
