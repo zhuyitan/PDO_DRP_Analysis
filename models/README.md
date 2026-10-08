@@ -4,9 +4,12 @@ This directory contains the model implementations used in the PDO drug-response 
 
 ```text id="t6rz3p"
 models/
+├── DeepTTC/
 ├── GraphDRP/
 ├── HiDRA/
-└── LGBM/
+├── IGTD/
+├── LGBM/
+└── UNO/
 ```
 
 Each model directory includes the **preprocessing, training, and inference scripts used by the experiment runners** under `run_experiments/`.
@@ -20,6 +23,9 @@ These implementations are based on models from the **IMPROVE (Innovative Methodo
 | GraphDRP | https://github.com/JDACS4C-IMPROVE/GraphDRP/tree/branch-v0.1.0 |
 | HiDRA | https://github.com/JDACS4C-IMPROVE/HiDRA/tree/branch-v0.1.0 |
 | LGBM | https://github.com/JDACS4C-IMPROVE/LGBM/tree/branch-v0.1.0 |
+| DeepTTC | https://github.com/JDACS4C-IMPROVE/DeepTTC/tree/v0.1.0 |
+| IGTD | https://github.com/JDACS4C-IMPROVE/IGTD/tree/v0.1.0 |
+| UNO | https://github.com/JDACS4C-IMPROVE/UNO/tree/v0.1.0 |
 
 Additional IMPROVE resources:
 
@@ -43,6 +49,18 @@ Based on the IMPROVE HiDRA implementation. The local version includes architectu
 ### LGBM
 
 Based on the IMPROVE LGBM implementation. The local preprocessing, training, and inference scripts include modifications to support transfer learning from pretrained cancer cell line (CCL) models to PDO data.
+
+### DeepTTC
+
+Based on the IMPROVE DeepTTC implementation. The local preprocessing, training, and inference scripts are used for the cell-line-only and joint training experiments in this analysis.
+
+### IGTD
+
+Based on the IMPROVE IGTD implementation. The local version adds `IGTD_preprocess_for_inference_improve.py`, which preprocesses inference datasets (such as CCL test splits and PDO studies) using the feature selection, scaling, and image layout saved during training preprocessing, so new samples are converted into images exactly the same way as the training data. Its output uses the test-stage file names so the inference script can read it directly.
+
+### UNO
+
+Based on the IMPROVE UNO implementation. The local version adds `uno_finetune_improve.py`, which loads a UNO model pretrained on cancer cell line (CCL) data, freezes a chosen set of layers, and fine-tunes the remaining layers on PDO data for the transfer-learning experiments.
 
 ## Experiment Runners
 

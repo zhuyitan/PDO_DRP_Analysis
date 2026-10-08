@@ -1,0 +1,27 @@
+name: deepttc
+channels:
+  - conda-forge
+  - pytorch
+  - nvidia
+dependencies:
+  - python=3.10
+  - pytorch=2.5.1
+  - pytorch-cuda=12.4
+  - pandas
+  - numpy
+  - scikit-learn
+  - scipy
+  - pip
+  - pip:
+    - autograd==1.7.0
+    - autograd-gamma==0.5.0
+    - lifelines==0.30.0
+    - PubChemPy==1.0.4
+    - subword-nmt==0.3.8
+    - wget==3.2
+    - prettytable==3.13.0
+    - formulaic==1.1.1
+    - pyyaml
+    - requests
+    - tables
+    - pyarrow

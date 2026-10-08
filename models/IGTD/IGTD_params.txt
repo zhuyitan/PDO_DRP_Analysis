@@ -1,0 +1,43 @@
+[Preprocess]
+x_data_canc_files = [["cancer_gene_expression.tsv", ["Gene_Symbol"]]]
+x_data_drug_files = [["drug_mordred.tsv"]]
+y_data_files = [["response.tsv"]]
+data_format = .pkl
+train_split_file = CCLE_split_0_train.txt
+val_split_file = CCLE_split_0_val.txt
+test_split_file = CCLE_split_0_test.txt
+inference_split_file = CCLE_split_0_test.txt
+preprocessor_param_file = preprocessor_params.pkl
+inference_data_name = inference_example
+
+[Train]
+model_file_name = model
+model_file_format = .h5
+data_format = .pkl
+epochs = 100
+#epochs = 3
+learning_rate = 0.0001
+batch_size = 256
+loss = mse
+patience = 20
+rlr_factor = 0.1
+rlr_min_delta = 0.000001
+rlr_cooldown = 0
+rlr_min_lr = 0.000001
+rlr_patience = 10
+es_min_delta = 0.000001
+conv = [[[16, 5, 5, 1, 1], [32, 5, 5, 1, 1], [64, 5, 5, 1, 1], [128, 5, 5, 1, 1]]]
+pool = [[2, 2]]
+dense = [1000, 500, 250, 125, 60]
+optimizer = Adam
+activation = relu
+dropout = 0.1
+#early_stop=False
+#log_interval = 20
+#ckpt_save_interval = 5
+
+
+[Infer]
+model_file_name = model
+model_file_format = .h5
+data_format = .pkl
